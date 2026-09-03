@@ -1,0 +1,56 @@
+import { execSync } from 'node:child_process';
+import path from 'node:path';
+import { driver } from '@wdio/globals';
+
+const APP_ID = 'com.demoapp';
+const APK_PATH = path.join(
+  __dirname, '..', 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk',
+);
+
+export const config: WebdriverIO.Config = {
+  runner: 'local',
+  specs: ['./specs/**/*.e2e.ts'],
+  maxInstances: 1,       // one physical device — nothing to parallelize across
+  port: 4723,
+  services: [['appium', {}]],
+  capabilities: [
+    {
+      platformName: 'Android',
+      'appium:automationName': 'UiAutomator2',
+      'appium:app': APK_PATH,
+      'appium:appPackage': APP_ID,
+      // fullReset would reinstall (uninstall+install) every session, which is slower than
+      // needed — onPrepare below uninstalls once per run instead, and beforeEach clears app
+      // data between individual tests.
+      'appium:fullReset': false,
+      'appium:noReset': false,
+      'appium:newCommandTimeout': 240,
+    },
+  ],
+  logLevel: 'info',
+  framework: 'mocha',
+  mochaOpts: { ui: 'bdd', timeout: 120000 },
+  reporters: ['spec'],
+
+  onPrepare: function () {
+    // android/app/build.gradle hardcodes versionCode 1 — with fullReset:false, Appium may
+    // treat a same-versionCode APK as already installed and skip reinstalling, silently
+    // testing a stale build after every rebuild. Uninstalling once up front (ignoring
+    // failure when it isn't installed yet) forces every run to install the APK just built.
+    try {
+      execSync(`adb uninstall ${APP_ID}`, { stdio: 'ignore' });
+    } catch {
+      // not installed yet — fine, Appium installs fresh either way.
+    }
+  },
+
+  beforeEach: async function () {
+    // The app persists todos to AsyncStorage — without this, one test's todos leak into
+    // the next (the mobile equivalent of the web suite's shared-cart problem).
+    // ponytail: 'mobile: clearApp' is appium-uiautomator2-driver's documented reset command;
+    // confirm it behaves as expected during the Phase 0 device spike. Fallback if it doesn't:
+    // `adb shell pm clear com.demoapp` via execSync, same place.
+    await driver.execute('mobile: clearApp', { appId: APP_ID });
+    await driver.activateApp(APP_ID);
+  },
+};
