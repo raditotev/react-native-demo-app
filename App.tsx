@@ -79,6 +79,7 @@ function App() {
       <View style={styles.inputRow}>
         <TextInput
           testID="todo-input"
+          accessibilityLabel="todo-input"
           style={[styles.input, isDarkMode && styles.inputDark]}
           value={text}
           onChangeText={setText}
@@ -89,6 +90,7 @@ function App() {
         />
         <TouchableOpacity
           testID="add-button"
+          accessibilityLabel="add-button"
           style={styles.addButton}
           onPress={addTodo}>
           <Text style={styles.addButtonText}>Add</Text>
@@ -102,6 +104,7 @@ function App() {
           <View testID={`todo-item-${item.id}`} style={styles.row}>
             <TouchableOpacity
               testID={`todo-checkbox-${item.id}`}
+              accessibilityLabel={`todo-checkbox-${item.id}`}
               style={styles.checkboxTouchable}
               onPress={() => toggleTodo(item.id)}>
               <View
@@ -118,6 +121,7 @@ function App() {
             </TouchableOpacity>
             <TouchableOpacity
               testID={`todo-delete-${item.id}`}
+              accessibilityLabel={`todo-delete-${item.id}`}
               onPress={() => deleteTodo(item.id)}>
               <Text style={styles.deleteText}>Delete</Text>
             </TouchableOpacity>
