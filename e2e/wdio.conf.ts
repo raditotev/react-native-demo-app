@@ -62,8 +62,13 @@ export const config: WebdriverIO.Config = {
   beforeEach: async function () {
     // The app persists todos to AsyncStorage — without this, one test's todos leak into
     // the next (the mobile equivalent of the web suite's shared-cart problem).
-    // ponytail: 'mobile: clearApp' is appium-uiautomator2-driver's documented reset command;
-    // confirm it behaves as expected during the Phase 0 device spike. Fallback if it doesn't:
+    // ponytail: 'mobile: clearApp' is appium-uiautomator2-driver's documented reset command.
+    // Checked during the Phase 0 device spike (2026-09-04) and it's NOT confirmed reliable:
+    // a live device dump taken right after a 3-test run showed one earlier test's todo gone
+    // but another still present — consistent with clearApp not always completing before the
+    // next test's actions start. Not conclusively pinned down (could also be an AsyncStorage
+    // write-timing race, not clearApp itself). If a future run shows a test polluted by a
+    // prior test's data, don't re-litigate this — apply the fallback already named here:
     // `adb shell pm clear com.demoapp` via execSync, same place.
     await driver.execute('mobile: clearApp', { appId: APP_ID });
     await driver.activateApp(APP_ID);
