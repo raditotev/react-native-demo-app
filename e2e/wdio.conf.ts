@@ -27,7 +27,7 @@ export const config: WebdriverIO.Config = {
       'appium:app': APK_PATH,
       'appium:appPackage': APP_ID,
       // fullReset would reinstall (uninstall+install) every session, which is slower than
-      // needed — onPrepare below uninstalls once per run instead, and beforeEach clears app
+      // needed — onPrepare below uninstalls once per run instead, and beforeTest clears app
       // data between individual tests.
       'appium:fullReset': false,
       'appium:noReset': false,
@@ -59,17 +59,20 @@ export const config: WebdriverIO.Config = {
     }
   },
 
-  beforeEach: async function () {
+  // Not `beforeEach` — that's a Mocha hook name, not one WebdriverIO's config recognizes
+  // (the runner calls it `beforeTest`; see @wdio/types Services.beforeTest). A `beforeEach`
+  // key here is silently ignored — confirmed live 2026-09-04: it never ran, todos piled up
+  // across tests in the one shared session, and the 3rd test's `~text="Delete"]` match hit
+  // the 1st test's row instead of its own, deleting the wrong todo.
+  beforeTest: async function () {
     // The app persists todos to AsyncStorage — without this, one test's todos leak into
     // the next (the mobile equivalent of the web suite's shared-cart problem).
     // ponytail: 'mobile: clearApp' is appium-uiautomator2-driver's documented reset command.
-    // Checked during the Phase 0 device spike (2026-09-04) and it's NOT confirmed reliable:
-    // a live device dump taken right after a 3-test run showed one earlier test's todo gone
-    // but another still present — consistent with clearApp not always completing before the
-    // next test's actions start. Not conclusively pinned down (could also be an AsyncStorage
-    // write-timing race, not clearApp itself). If a future run shows a test polluted by a
-    // prior test's data, don't re-litigate this — apply the fallback already named here:
-    // `adb shell pm clear com.demoapp` via execSync, same place.
+    // The Phase 0 device spike (2026-09-04) saw this hook not fire at all (wrong hook name,
+    // fixed above) and misread the resulting cross-test pollution as clearApp itself being
+    // unreliable — it was never exercised, so that verdict doesn't stand. If a *future* run
+    // shows pollution with this hook actually firing, the fallback is `adb shell pm clear
+    // com.demoapp` via execSync, same place.
     await driver.execute('mobile: clearApp', { appId: APP_ID });
     await driver.activateApp(APP_ID);
   },

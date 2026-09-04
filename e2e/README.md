@@ -26,7 +26,7 @@ a workaround in the test.
 
 ## Reset between tests
 
-`beforeEach` in `wdio.conf.ts` calls `mobile: clearApp` — clears AsyncStorage without a
+`beforeTest` in `wdio.conf.ts` calls `mobile: clearApp` — clears AsyncStorage without a
 full reinstall, so one test's todos don't leak into the next. `onPrepare` uninstalls the app
 once per run, so a same-`versionCode` rebuild (the app's `versionCode` is hardcoded to `1`)
 is never skipped by Appium as "already installed."
