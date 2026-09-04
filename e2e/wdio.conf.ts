@@ -2,6 +2,13 @@ import { execSync } from 'node:child_process';
 import path from 'node:path';
 import { driver } from '@wdio/globals';
 
+// adb isn't on PATH in every shell that runs this (see e2e/preflight.sh's own comment) —
+// resolve it the same way preflight.sh does, so `execSync('adb ...')` below doesn't silently
+// ENOENT and get swallowed by onPrepare's catch, below.
+const ADB = process.env.ANDROID_HOME
+  ? path.join(process.env.ANDROID_HOME, 'platform-tools', 'adb')
+  : 'adb';
+
 const APP_ID = 'com.demoapp';
 const APK_PATH = path.join(
   __dirname, '..', 'android', 'app', 'build', 'outputs', 'apk', 'release', 'app-release.apk',
@@ -37,8 +44,16 @@ export const config: WebdriverIO.Config = {
     // treat a same-versionCode APK as already installed and skip reinstalling, silently
     // testing a stale build after every rebuild. Uninstalling once up front (ignoring
     // failure when it isn't installed yet) forces every run to install the APK just built.
+    //
+    // Confirmed live 2026-09-04: this previously called bare `adb`, which isn't on PATH in
+    // every shell that runs `npm run e2e` — the failure (ENOENT, not "not installed yet")
+    // was swallowed by the catch below, so the uninstall silently never ran. Appium then saw
+    // the same versionCode already installed and skipped reinstalling — every run tested a
+    // stale APK from a prior session (once from 2026-09-03) instead of the one just built.
+    // Confirmed by installedTime/lastUpdateTime on device staying frozen across two full
+    // `npm run e2e` runs; a manual `adb uninstall` between runs immediately fixed it.
     try {
-      execSync(`adb uninstall ${APP_ID}`, { stdio: 'ignore' });
+      execSync(`${ADB} uninstall ${APP_ID}`, { stdio: 'ignore' });
     } catch {
       // not installed yet — fine, Appium installs fresh either way.
     }
